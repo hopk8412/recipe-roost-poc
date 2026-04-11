@@ -56,20 +56,26 @@ A food recipe web application with user authentication, full recipe CRUD, image 
 - better-auth manages the `user` table; recipe tables reference `user.id` (text FK)
 - FTS trigger (`recipes_search_vector_trigger`) populates `search_vector` on insert/update
 
-### Phase 2: Authentication
+### Phase 2: Authentication ✅
 **Goal: Register, login, logout, protected routes**
 
-- [ ] Install + configure better-auth
-- [ ] Create `src/lib/auth/index.ts`
-- [ ] Add better-auth route handler (`/api/auth/[...all]`)
-- [ ] Configure `src/hooks.server.ts` — session resolution
-- [ ] Register page + form action
-- [ ] Login page + form action
-- [ ] Logout form action
-- [ ] `(protected)/+layout.server.ts` — redirect unauthenticated users
-- [ ] `(public)/+layout.server.ts` — redirect authenticated users
-- [ ] Site header with user name + logout
-- [ ] **Verify:** full auth flow works
+- [x] Install + configure better-auth
+- [x] Create `src/lib/server/auth.ts` (better-auth with drizzleAdapter + sveltekitCookies)
+- [x] Add better-auth route handler (via `svelteKitHandler` in `hooks.server.ts`)
+- [x] Configure `src/hooks.server.ts` — session resolution, populates `locals.user/session`
+- [x] Register page + form action (`(public)/register/` — Zod + superforms)
+- [x] Login page + form action (`(public)/login/` — Zod + superforms)
+- [x] Logout form action (`/sign-out` dedicated route)
+- [x] `(protected)/+layout.server.ts` — redirect unauthenticated users to `/login`
+- [x] `(public)/+layout.server.ts` — redirect authenticated users to `/dashboard`
+- [x] Site header with user name + logout (in `(protected)/+layout.svelte`)
+- [x] Root `/` redirects to `/dashboard` or `/login` based on session
+- [x] **Verified:** 0 type errors, 0 warnings (`npm run check`)
+
+**Notes:**
+- Used `zod4` + `zod4Client` adapters (Zod v4 installed); `z.string().check(z.email())` pattern (`.email(params)` is deprecated in v4)
+- `untrack(() => data.form)` used in Svelte components to silence false-positive Svelte 5 reactivity warning on superForm init
+- Sign-out lives at `/sign-out` as a dedicated form-action route; header POSTs there via `use:enhance`
 
 ### Phase 3: Recipe CRUD
 **Goal: Full create, read, update, delete for recipes**
