@@ -1,0 +1,103 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgres://recipe_user:secret@pgbouncer:5433/recipe_roost
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: recipe-roost
+      ORIGIN: http://localhost:3000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      pgbouncer:
+        condition: service_started
+      minio:
+        condition: service_started
+    restart: unless-stopped
+    profiles:
+      - full
+
+  db:
+    image: postgres:17-alpine
+    restart: always
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_USER: recipe_user
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: recipe_roost
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U recipe_user -d recipe_roost']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgbouncer:
+    image: bitnami/pgbouncer:latest
+    restart: always
+    ports:
+      - '5433:5433'
+    environment:
+      POSTGRESQL_HOST: db
+      POSTGRESQL_PORT: '5432'
+      POSTGRESQL_USERNAME: recipe_user
+      POSTGRESQL_PASSWORD: secret
+      POSTGRESQL_DATABASE: recipe_roost
+      PGBOUNCER_PORT: '5433'
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: '1000'
+      PGBOUNCER_DEFAULT_POOL_SIZE: '20'
+      PGBOUNCER_AUTH_TYPE: scram-sha-256
+    depends_on:
+      db:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    restart: always
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redis_data:
+  minio_data:
