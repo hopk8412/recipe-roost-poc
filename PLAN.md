@@ -17,6 +17,7 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 | 5 — Production Hardening | PgBouncer, Redis session cache, rate limiting, security headers, pino logging, Playwright e2e tests, Dockerfile, seed script |
 | 6 — Deployment Readiness | Slim recipe model (dropped timing/difficulty fields), liveness + readiness probes, Prometheus metrics, Grafana Docker profile, pg_dump backup script, README |
 | 7 — Role System | `user_roles` table, `isAdmin` on `App.Locals`, `handleRoles` hook, admin bypass for edit/delete, admin seed user |
+| 8 — User Management Screen | `(admin)` layout group, `/admin/users` paginated table, `grantAdmin`/`revokeAdmin` actions, Admin nav link for admins |
 
 ---
 
@@ -43,31 +44,32 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 
 ---
 
-### Phase 8: User Management Screen
+### Phase 8: User Management Screen ✅ Complete
 
 **Goal:** Provide an admin-only screen where admins can view all user accounts and manage their roles. Designed to be extensible for future admin features.
 
 #### Routing & layout
-- [ ] Create a new `(admin)` layout group at `src/routes/(admin)/`
-- [ ] `(admin)/+layout.server.ts` — redirect non-admin users to `/dashboard` (similar pattern to `(protected)`)
-- [ ] `(admin)/+layout.svelte` — admin shell layout with a sidebar or top nav; stub navigation links so future admin screens can be added without restructuring the layout
+- [x] Create a new `(admin)` layout group at `src/routes/(admin)/`
+- [x] `(admin)/+layout.server.ts` — redirect non-admin users to `/dashboard` (similar pattern to `(protected)`)
+- [x] `(admin)/+layout.svelte` — admin shell with header, sidebar nav, and stubbed nav links for future screens
 
 #### User list page (`/admin/users`)
-- [ ] `src/routes/(admin)/admin/users/+page.server.ts`
+- [x] `src/routes/(admin)/admin/users/+page.server.ts`
   - Load paginated list of all users (from the `user` table)
   - Join against `user_roles` to surface current roles per user
   - Support `?page=` query param; default page size 20
-- [ ] `src/routes/(admin)/admin/users/+page.svelte`
+- [x] `src/routes/(admin)/admin/users/+page.svelte`
   - Table: user name, email, created date, current roles, actions
-  - "Grant admin" / "Revoke admin" form actions per row (superforms or plain POST actions)
+  - "Grant Admin" / "Revoke Admin" form actions per row
   - Pagination controls
 
 #### Backend actions
-- [ ] Named form actions `?/grantAdmin` and `?/revokeAdmin` — insert/delete from `user_roles`; prevent an admin from revoking their own role
+- [x] Named form actions `?/grantAdmin` and `?/revokeAdmin` — insert/delete from `user_roles`; prevent an admin from revoking their own role
 
 #### Notes
 - Admin cannot remove their own admin role (guard in the action)
-- The admin layout's sidebar nav is intentionally stubbed with placeholders — future screens (e.g., recipe moderation, analytics) should slot in without requiring a layout rewrite
+- Admin nav link added to `(protected)/+layout.svelte` — only visible to admin users
+- Future admin screens (recipe moderation, analytics) slot into the sidebar nav without restructuring the layout
 
 ---
 

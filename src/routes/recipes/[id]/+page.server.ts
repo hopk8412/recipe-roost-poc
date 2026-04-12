@@ -32,7 +32,7 @@ export const load: PageServerLoad = async (event) => {
 		event.setHeaders({ 'Cache-Control': 'public, max-age=60, stale-while-revalidate=300' });
 	}
 
-	return { recipe, currentUserId, isSaved };
+	return { recipe, currentUserId, isSaved, isAdmin: event.locals.isAdmin };
 };
 
 export const actions: Actions = {
