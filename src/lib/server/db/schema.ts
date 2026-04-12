@@ -32,10 +32,6 @@ export const recipes = pgTable(
 		title: text('title').notNull(),
 		description: text('description'),
 		imageUrl: text('image_url'),
-		prepTime: integer('prep_time'), // minutes
-		cookTime: integer('cook_time'), // minutes
-		servings: integer('servings'),
-		difficulty: text('difficulty', { enum: ['easy', 'medium', 'hard'] }),
 		isPublished: boolean('is_published').notNull().default(false),
 		// Populated via database trigger (see migration)
 		searchVector: tsvector('search_vector'),

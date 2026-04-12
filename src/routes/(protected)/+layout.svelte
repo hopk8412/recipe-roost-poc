@@ -17,7 +17,9 @@
 			<!-- Nav + user area -->
 			<div class="flex items-center gap-4">
 				<nav class="hidden items-center gap-6 text-sm font-medium text-gray-600 sm:flex">
+					<a href="/recipes" class="hover:text-orange-600">Browse</a>
 					<a href="/dashboard" class="hover:text-orange-600">My Recipes</a>
+					<a href="/recipes/new" class="hover:text-orange-600">+ New Recipe</a>
 				</nav>
 
 				<div class="flex items-center gap-3">

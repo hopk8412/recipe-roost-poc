@@ -5,6 +5,8 @@ import { env } from '$env/dynamic/private';
 
 if (!env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
 
-const client = postgres(env.DATABASE_URL);
+// prepare: false is required when connecting through PgBouncer in transaction
+// pooling mode — prepared statements are not supported in that mode.
+const client = postgres(env.DATABASE_URL, { prepare: false });
 
 export const db = drizzle(client, { schema });

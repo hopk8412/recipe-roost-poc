@@ -1,162 +1,188 @@
 # Recipe Roost
 
-A full-stack food recipe web application built with SvelteKit. Users can register, create and manage recipes with ingredients and step-by-step instructions, upload photos, search recipes by keyword or tag, and bookmark their favorites.
+A full-stack recipe web application with user authentication, full recipe CRUD, image uploads, full-text search, and bookmarking. Built to scale to ~100,000 users.
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Framework | SvelteKit 2.x + TypeScript (strict) |
-| Database | PostgreSQL 17 |
+| Framework | SvelteKit 2.x (`@sveltejs/adapter-node`) |
+| Language | TypeScript (strict) |
 | ORM | Drizzle ORM + Drizzle Kit |
 | Auth | better-auth (email/password, cookie sessions) |
 | Styling | Tailwind CSS v4 |
-| Forms | Zod + sveltekit-superforms |
-| File storage | MinIO (S3-compatible) |
+| Forms | Zod v4 + sveltekit-superforms |
+| File storage | MinIO (S3-compatible, Docker) |
 | Session cache | Redis |
 | Connection pooling | PgBouncer |
-| Local dev | Docker + Docker Compose |
+| Database | PostgreSQL 17 |
+| Observability | pino (logging) + prom-client (metrics) |
 
-## Prerequisites
+---
 
-- [Node.js](https://nodejs.org/) 22+
+## Quickstart (local development)
+
+### Prerequisites
+
+- [Node.js 22+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-## Local Development
+### 1. Clone and install
 
-### 1. Install dependencies
-
-```sh
+```bash
+git clone <repo-url>
+cd recipe-roost
 npm install
 ```
 
 ### 2. Configure environment
 
-```sh
+```bash
 cp .env.example .env
 ```
 
-Edit `.env` if needed. The defaults work out of the box with the Docker services below.
+Edit `.env` and set a strong `BETTER_AUTH_SECRET` (32+ chars). Everything else works out of the box for local development.
 
-> **Note:** PostgreSQL is exposed on host port **5434** (not 5432) to avoid conflicts with any locally installed PostgreSQL instance.
+### 3. Start infrastructure
 
-### 3. Start infrastructure services
-
-```sh
-docker compose up db redis minio pgbouncer -d
+```bash
+docker compose up db redis minio pgbouncer
 ```
 
-This starts:
-- PostgreSQL 17 — port 5434 (host) / 5432 (internal)
-- PgBouncer connection pooler — port 5433
-- Redis — port 6379
-- MinIO object storage — port 9000 (API), 9001 (console)
+This starts PostgreSQL (port 5434), PgBouncer (port 5433), Redis (port 6379), and MinIO (port 9000 / console 9001).
 
 ### 4. Run database migrations
 
-```sh
+```bash
 npm run db:migrate
 ```
 
-### 5. Start the development server
+### 5. (Optional) Seed sample data
 
-```sh
+```bash
+npm run db:seed
+```
+
+Inserts two demo users and five sample recipes.
+
+### 6. Start the dev server
+
+```bash
 npm run dev
 ```
 
-The app is available at [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173).
 
-## Available Scripts
+---
 
-| Command | Description |
+## NPM Scripts
+
+| Script | Description |
 |---|---|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview the production build locally |
-| `npm run check` | Type-check with `svelte-check` |
-| `npm run lint` | Check formatting and lint |
-| `npm run format` | Auto-format all files with Prettier |
+| `npm run dev` | SvelteKit dev server with hot reload (port 5173) |
+| `npm run build` | Production build |
+| `npm run preview` | Preview the production build locally (port 4173) |
+| `npm run check` | TypeScript + Svelte type check — run before committing |
 | `npm run db:migrate` | Apply pending Drizzle migrations |
-| `npm run db:generate` | Generate a new migration from schema changes |
-| `npm run db:push` | Push schema directly to DB (dev only, skips migration files) |
-| `npm run db:studio` | Open Drizzle Studio (visual DB browser) |
-| `npm run auth:schema` | Regenerate the better-auth schema file from auth config |
+| `npm run db:seed` | Insert sample users and recipes |
+| `npm run db:studio` | Open Drizzle Studio GUI |
+| `npm run test:e2e` | Run Playwright integration tests (requires `npm run build` first) |
+| `npm run auth:schema` | Regenerate better-auth schema from config |
 
-## Docker Services
+---
 
-| Service | Image | Host Port(s) |
-|---|---|---|
-| `db` | postgres:17-alpine | 5434 |
-| `pgbouncer` | bitnami/pgbouncer | 5433 |
-| `redis` | redis:7-alpine | 6379 |
-| `minio` | minio/minio | 9000 (API), 9001 (console) |
-| `app` | (built locally) | 3000 |
+## Docker Compose Profiles
 
-### MinIO Console
+### Local development (infrastructure only)
 
-The MinIO web console is available at [http://localhost:9001](http://localhost:9001) when the service is running.
-Default credentials: `minioadmin` / `minioadmin`
+```bash
+docker compose up db redis minio pgbouncer
+```
 
-### Running everything via Docker (full stack)
+### Full stack (production image)
 
-A Dockerfile is planned for Phase 5. Once built, the full stack (including the app container) can be started with:
-
-```sh
+```bash
 docker compose --profile full up
 ```
 
-## Database
+### Dev server with hot reload (no local Node required)
 
-Migrations live in [`drizzle/`](drizzle/) and are applied with `npm run db:migrate`.
-
-### Schema overview
-
-| Table | Managed by | Description |
-|---|---|---|
-| `user` | better-auth | Registered users |
-| `session` | better-auth | Active login sessions |
-| `account` | better-auth | Auth provider accounts (email/password) |
-| `verification` | better-auth | Email verification tokens |
-| `recipes` | app | Recipe metadata and content |
-| `ingredients` | app | Per-recipe ingredient list |
-| `steps` | app | Ordered recipe steps |
-| `tags` | app | Searchable tags |
-| `recipe_tags` | app | Recipe ↔ tag join table |
-| `saved_recipes` | app | User bookmarks |
-
-Recipes support PostgreSQL full-text search via a `tsvector` column populated automatically by a database trigger on insert/update.
-
-## Project Structure
-
-```
-src/
-├── lib/
-│   ├── server/
-│   │   ├── auth.ts          # better-auth configuration
-│   │   └── db/
-│   │       ├── index.ts     # Drizzle instance (postgres.js driver)
-│   │       ├── schema.ts    # Application table definitions
-│   │       └── auth.schema.ts  # better-auth table definitions (generated)
-│   └── index.ts
-├── routes/
-│   └── api/
-│       └── health/          # GET /api/health — liveness check
-├── hooks.server.ts          # Session resolution on every request
-└── app.d.ts                 # TypeScript types for App.Locals
-drizzle/                     # Migration SQL files
-compose.yaml                 # Docker Compose service definitions
-drizzle.config.ts            # Drizzle Kit config
+```bash
+docker compose -f compose.yaml -f docker-compose.dev.yml up
 ```
 
-## Implementation Status
+### Monitoring (Prometheus + Grafana)
 
-See [PLAN.md](PLAN.md) for the full roadmap and per-phase progress.
+```bash
+docker compose --profile monitoring up
+```
 
-| Phase | Description | Status |
+- Prometheus: [http://localhost:9090](http://localhost:9090)
+- Grafana: [http://localhost:3001](http://localhost:3001) (admin / admin)
+- Metrics endpoint: [http://localhost:3000/api/metrics](http://localhost:3000/api/metrics)
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and fill in the values. All variables are required unless marked optional.
+
+| Variable | Default (dev) | Description |
 |---|---|---|
-| 1 | Foundation — scaffold, schema, Docker, health check | Complete |
-| 2 | Authentication — register, login, logout, protected routes | Pending |
-| 3 | Recipe CRUD — create, view, edit, delete, image upload | Pending |
-| 4 | Discovery — full-text search, tag filters, bookmarks | Pending |
-| 5 | Production hardening — rate limiting, logging, Dockerfile | Pending |
-| 6 | Deployment readiness — metrics, backups, documentation | Pending |
+| `DATABASE_URL` | `postgres://recipe_user:secret@localhost:5433/recipe_roost` | App DB connection — routes through PgBouncer (transaction pooling). |
+| `DATABASE_URL_DIRECT` | `postgres://recipe_user:secret@localhost:5434/recipe_roost` | Direct DB connection used by Drizzle migrations. Bypasses PgBouncer (required — DDL is incompatible with transaction pooling). |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection string for session cache and rate limiting. |
+| `MINIO_ENDPOINT` | `localhost` | MinIO hostname. Use `minio` inside Docker. |
+| `MINIO_PORT` | `9000` | MinIO API port. |
+| `MINIO_ACCESS_KEY` | `minioadmin` | MinIO access key. |
+| `MINIO_SECRET_KEY` | `minioadmin` | MinIO secret key. Change in production. |
+| `MINIO_BUCKET` | `recipe-roost` | S3 bucket name. Auto-created on first upload. |
+| `MINIO_PUBLIC_URL` | `http://localhost:9000` | Browser-accessible MinIO base URL. Differs from `MINIO_ENDPOINT` when the app runs inside Docker. |
+| `ORIGIN` | `http://localhost:5173` | SvelteKit origin. Must match the URL your app is served from. |
+| `BETTER_AUTH_SECRET` | *(required)* | Secret for signing session tokens. Generate with `openssl rand -hex 32`. |
+| `LOG_LEVEL` | `debug` (dev) / `info` (prod) | Pino log level: `trace`, `debug`, `info`, `warn`, `error`, `fatal`. Optional. |
+
+---
+
+## API Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/health` | Liveness probe — returns `200 { status: "ok" }` if the process is running. |
+| `GET /api/ready` | Readiness probe — checks DB + Redis. Returns `200` when all dependencies are up, `503` with details when degraded. |
+| `GET /api/metrics` | Prometheus metrics (text format). Restrict to internal networks in production. |
+
+---
+
+## Database Migrations
+
+Migrations live in `drizzle/`. Apply them with:
+
+```bash
+npm run db:migrate
+```
+
+> **Note:** Migrations use `DATABASE_URL_DIRECT` to connect directly to PostgreSQL, bypassing PgBouncer. DDL statements (`CREATE TABLE`, `ALTER TABLE`, etc.) are not compatible with PgBouncer transaction pooling.
+
+---
+
+## Backups
+
+```bash
+./scripts/backup.sh
+```
+
+Creates a timestamped `pg_dump` archive in `./backups/`. Prunes dumps older than 30 days (configurable via `RETENTION_DAYS`). See the script header for cron setup instructions.
+
+---
+
+## Production Dockerfile
+
+A multi-stage Dockerfile is included:
+
+```bash
+docker build -t recipe-roost .
+docker run -p 3000:3000 --env-file .env recipe-roost
+```
+
+The final image is based on `node:22-alpine` and runs as a non-root user.

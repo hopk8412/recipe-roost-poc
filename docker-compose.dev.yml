@@ -1,0 +1,42 @@
+# Development Compose override — adds the SvelteKit dev server with hot reload.
+#
+# Usage:
+#   docker compose -f compose.yaml -f docker-compose.dev.yml up
+#
+# The `app-dev` service mounts the project root so Vite watches source files
+# and reloads in real-time.  Infrastructure services (db, redis, minio,
+# pgbouncer) are inherited unchanged from compose.yaml.
+
+services:
+  app-dev:
+    image: node:22-alpine
+    working_dir: /app
+    ports:
+      - '5173:5173'
+    volumes:
+      # Mount source tree for hot reload — node_modules stays in container
+      - .:/app
+      - /app/node_modules
+    environment:
+      DATABASE_URL: postgres://recipe_user:secret@pgbouncer:5433/recipe_roost
+      DATABASE_URL_DIRECT: postgres://recipe_user:secret@db:5432/recipe_roost
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: recipe-roost
+      MINIO_PUBLIC_URL: http://localhost:9000
+      ORIGIN: http://localhost:5173
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-secret-replace-in-production}
+      NODE_ENV: development
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      pgbouncer:
+        condition: service_started
+      minio:
+        condition: service_started
