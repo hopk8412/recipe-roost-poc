@@ -4,6 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Branching
+
+Before starting any new work, create a feature branch from `main`:
+
+```bash
+git checkout main && git pull
+git checkout -b feature-<tag>   # e.g. feature-recipe-search, feature-auth-refresh
+```
+
+Branch names must follow the `feature-<tag>` convention. All work for that feature lives on the branch; merge back to `main` when complete.
+
+---
+
 ## Commands
 
 ```bash

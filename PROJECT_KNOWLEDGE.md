@@ -315,6 +315,16 @@ await deleteImageByUrl(existingImageUrl);
 
 Image URLs are stored as full URLs (e.g., `http://localhost:9000/recipe-roost/images/uuid.jpg`). `MINIO_PUBLIC_URL` overrides the base for browser access.
 
+**Image replacement:** When a recipe is edited and a new image is uploaded, the old image is deleted from MinIO before the new URL is saved. When a recipe is deleted, its image is also deleted from MinIO.
+
+---
+
+## Business Rules
+
+- **Unpublished recipes** are only visible to their author — the public listing and detail pages filter these out server-side; the author can still view and edit their own unpublished recipes.
+- **Edit / Delete** are ownership-checked server-side: the `WHERE` clause includes both `id` and `authorId`. A missing or wrong author returns no rows, which the route treats as a 404 / forbidden.
+- **Save / Bookmark** button is only rendered for logged-in users who are not the recipe's author. Authors cannot save their own recipes.
+
 ---
 
 ## Route Layout Groups — Gotchas
@@ -360,6 +370,27 @@ docker compose --profile full up   # Full stack including app container
 | `app` | SvelteKit Node | 3000 | App (profile: full) |
 
 MinIO console: `http://localhost:9001` (login: `minioadmin` / `minioadmin`)
+
+---
+
+## Security Headers — CSP Note
+
+The `Content-Security-Policy` header (set in `hooks.server.ts`) includes `unsafe-inline` for both `script-src` and `style-src`. This is required because:
+- Svelte emits inline `<script>` blocks in SSR output
+- Tailwind CSS v4 injects inline styles at runtime
+
+Do not attempt to remove `unsafe-inline` without first implementing nonce-based CSP, as it will break the UI.
+
+---
+
+## Scaling Strategy (target: ~100k users)
+
+- **Horizontal:** Stateless SvelteKit app → run 2–3 replicas behind Nginx/Caddy
+- **Sessions:** Redis shared session cache across all replicas
+- **DB connections:** PgBouncer (transaction pooling) → 20–50 PostgreSQL processes
+- **Read replicas:** PostgreSQL read replica for recipe listing/search queries
+- **CDN:** `Cache-Control` on public recipe pages → Cloudflare caches rendered HTML
+- **Search:** PostgreSQL FTS with GIN index covers this scale — no Elasticsearch needed
 
 ---
 
