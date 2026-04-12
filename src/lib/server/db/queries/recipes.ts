@@ -251,12 +251,17 @@ export async function updateRecipe(
 	id: string,
 	authorId: string,
 	input: RecipeInput,
-	newImageUrl?: string | null
+	newImageUrl?: string | null,
+	adminOverride = false
 ) {
+	const ownershipClause = adminOverride
+		? eq(recipes.id, id)
+		: and(eq(recipes.id, id), eq(recipes.authorId, authorId));
+
 	const [existing] = await db
 		.select({ id: recipes.id, imageUrl: recipes.imageUrl })
 		.from(recipes)
-		.where(and(eq(recipes.id, id), eq(recipes.authorId, authorId)));
+		.where(ownershipClause);
 
 	if (!existing) return null;
 
@@ -311,10 +316,14 @@ export async function updateRecipe(
 
 // ─── Delete recipe ────────────────────────────────────────────────────────────
 
-export async function deleteRecipe(id: string, authorId: string) {
+export async function deleteRecipe(id: string, authorId: string, adminOverride = false) {
+	const ownershipClause = adminOverride
+		? eq(recipes.id, id)
+		: and(eq(recipes.id, id), eq(recipes.authorId, authorId));
+
 	const [deleted] = await db
 		.delete(recipes)
-		.where(and(eq(recipes.id, id), eq(recipes.authorId, authorId)))
+		.where(ownershipClause)
 		.returning({ id: recipes.id, imageUrl: recipes.imageUrl });
 	return deleted ?? null;
 }

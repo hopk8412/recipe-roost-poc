@@ -93,6 +93,21 @@ export const recipeTags = pgTable(
 	]
 );
 
+// ─── User Roles ───────────────────────────────────────────────────────────────
+// Application-managed roles. The `user` table is owned by better-auth;
+// we avoid touching it by keeping role data in a separate table.
+
+export const userRoles = pgTable(
+	'user_roles',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		role: text('role').notNull()
+	},
+	(table) => [primaryKey({ columns: [table.userId, table.role] })]
+);
+
 // ─── Saved Recipes (bookmarks) ───────────────────────────────────────────────
 
 export const savedRecipes = pgTable(

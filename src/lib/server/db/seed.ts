@@ -13,6 +13,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
 import * as schema from './schema';
 import { user } from './auth.schema';
+import { userRoles } from './schema';
 
 const url = process.env.DATABASE_URL_DIRECT ?? process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL or DATABASE_URL_DIRECT is not set');
@@ -35,6 +36,14 @@ const SEED_USERS = [
 		id: 'seed-user-bob',
 		name: 'Bob Chef',
 		email: 'bob@example.com',
+		emailVerified: true,
+		createdAt: new Date(),
+		updatedAt: new Date()
+	},
+	{
+		id: 'seed-user-admin',
+		name: 'Admin User',
+		email: 'admin@example.com',
 		emailVerified: true,
 		createdAt: new Date(),
 		updatedAt: new Date()
@@ -184,6 +193,16 @@ async function seed() {
 			// Use the real DB id for recipe inserts
 			u.id = existing[0].id;
 		}
+	}
+
+	// Roles — grant admin to the admin seed user
+	const adminUser = SEED_USERS.find((u) => u.email === 'admin@example.com');
+	if (adminUser) {
+		await db
+			.insert(userRoles)
+			.values({ userId: adminUser.id, role: 'admin' })
+			.onConflictDoNothing();
+		console.log(`  ✔ Admin role granted to: ${adminUser.email}`);
 	}
 
 	// Tags

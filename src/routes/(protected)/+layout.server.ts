@@ -5,5 +5,5 @@ export const load: LayoutServerLoad = (event) => {
 	if (!event.locals.user) {
 		return redirect(302, '/login');
 	}
-	return { user: event.locals.user };
+	return { user: event.locals.user, isAdmin: event.locals.isAdmin };
 };

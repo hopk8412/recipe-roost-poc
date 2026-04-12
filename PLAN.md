@@ -16,60 +16,34 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 | 4 — Discovery & Search | FTS search, tag filtering, debounced search UI, save/bookmark system, dashboard tabs |
 | 5 — Production Hardening | PgBouncer, Redis session cache, rate limiting, security headers, pino logging, Playwright e2e tests, Dockerfile, seed script |
 | 6 — Deployment Readiness | Slim recipe model (dropped timing/difficulty fields), liveness + readiness probes, Prometheus metrics, Grafana Docker profile, pg_dump backup script, README |
+| 7 — Role System | `user_roles` table, `isAdmin` on `App.Locals`, `handleRoles` hook, admin bypass for edit/delete, admin seed user |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 7: Recipe Ranking
-
-**Goal:** Allow recipe authors to assign an optional letter rank to their recipes, displayed everywhere the recipe appears.
-
-**Rank values:** `S`, `A`, `B`, `C`, `D` (nullable — rank is optional)
-
-#### Schema changes
-- Add `rank varchar(1)` column to the `recipes` table with a `CHECK (rank IN ('S', 'A', 'B', 'C', 'D'))` constraint (nullable).
-- Generate and apply a Drizzle migration.
-
-#### Backend
-- [ ] Update `src/lib/server/db/schema.ts` — add `rank` to the `recipes` table definition
-- [ ] Run `npm run db:generate` then `npm run db:migrate`
-- [ ] Update `src/lib/recipe-form.ts` — add optional `rank` field (`z.enum(['S','A','B','C','D']).nullable().optional()`)
-- [ ] Update query functions in `src/lib/server/db/queries/recipes.ts` to select and write `rank`
-- [ ] Update create and edit server actions to pass `rank` through to the DB
-
-#### UI
-- [ ] Add rank selector to create form (`(protected)/recipes/new/`) — dropdown or button group for S/A/B/C/D + a "No rank" / clear option
-- [ ] Add rank selector to edit form (`(protected)/recipes/[id]/edit/`) — pre-populate with existing value
-- [ ] Display rank badge on public recipe listing (`src/routes/recipes/+page.svelte`)
-- [ ] Display rank badge on recipe detail page (`src/routes/recipes/[id]/+page.svelte`)
-- [ ] Rank selector is only rendered for the recipe author (edit form is already author-gated; display is read-only everywhere)
-
----
-
-### Phase 8: Role System
+### Phase 7: Role System ✅ Complete
 
 **Goal:** Introduce an admin role that allows designated users to edit or delete any recipe, regardless of authorship.
 
 #### Design decisions to resolve before implementing
-- Evaluate better-auth's built-in admin plugin (`@better-auth/plugin-access-control`) vs. a custom `user_roles` application table. A custom table keeps role logic in the app layer and avoids touching better-auth's managed schema.
-- Recommended approach: add a `user_roles` table (`userId text FK → user`, `role text`, composite PK) in `src/lib/server/db/schema.ts`.
+- Evaluated better-auth's built-in admin plugin vs. a custom `user_roles` application table. Chose custom table to keep role logic in the app layer without touching better-auth's managed schema.
 
 #### Backend
-- [ ] Add `user_roles` table to schema; generate and apply migration
-- [ ] Extend `app.d.ts` — add `roles: string[]` (or `isAdmin: boolean`) to `App.Locals`
-- [ ] Load roles in `hooks.server.ts` after session resolution — query `user_roles` for the authenticated user and attach to `event.locals`
-- [ ] Add helper `isAdmin(locals)` in a shared server util
-- [ ] Update `(protected)/+layout.server.ts` to pass role info down via layout data
-- [ ] Update recipe edit and delete server actions — bypass the `authorId` ownership check when the requesting user is an admin
+- [x] Add `user_roles` table to schema; generate and apply migration
+- [x] Extend `app.d.ts` — add `isAdmin: boolean` to `App.Locals`
+- [x] Load roles in `hooks.server.ts` after session resolution via new `handleRoles` hook
+- [x] Add helper `isAdmin(locals)` in `src/lib/server/roles.ts`
+- [x] Update `(protected)/+layout.server.ts` to pass `isAdmin` down via layout data
+- [x] Update recipe edit and delete server actions — bypass the `authorId` ownership check when the requesting user is an admin
 
 #### Notes
-- Keep the ownership `WHERE` clause for non-admins unchanged — only add an admin bypass path
-- Seed script should create at least one admin user for local development
+- Non-admin ownership `WHERE` clause is unchanged — admin bypass is an additive path only
+- Seed script creates `admin@example.com` with the `admin` role
 
 ---
 
-### Phase 9: User Management Screen
+### Phase 8: User Management Screen
 
 **Goal:** Provide an admin-only screen where admins can view all user accounts and manage their roles. Designed to be extensible for future admin features.
 
@@ -94,3 +68,29 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 #### Notes
 - Admin cannot remove their own admin role (guard in the action)
 - The admin layout's sidebar nav is intentionally stubbed with placeholders — future screens (e.g., recipe moderation, analytics) should slot in without requiring a layout rewrite
+
+---
+
+### Phase 9: Recipe Ranking
+
+**Goal:** Allow recipe authors to assign an optional letter rank to their recipes, displayed everywhere the recipe appears.
+
+**Rank values:** `S`, `A`, `B`, `C`, `D` (nullable — rank is optional)
+
+#### Schema changes
+- Add `rank varchar(1)` column to the `recipes` table with a `CHECK (rank IN ('S', 'A', 'B', 'C', 'D'))` constraint (nullable).
+- Generate and apply a Drizzle migration.
+
+#### Backend
+- [ ] Update `src/lib/server/db/schema.ts` — add `rank` to the `recipes` table definition
+- [ ] Run `npm run db:generate` then `npm run db:migrate`
+- [ ] Update `src/lib/recipe-form.ts` — add optional `rank` field (`z.enum(['S','A','B','C','D']).nullable().optional()`)
+- [ ] Update query functions in `src/lib/server/db/queries/recipes.ts` to select and write `rank`
+- [ ] Update create and edit server actions to pass `rank` through to the DB
+
+#### UI
+- [ ] Add rank selector to create form (`(protected)/recipes/new/`) — dropdown or button group for S/A/B/C/D + a "No rank" / clear option
+- [ ] Add rank selector to edit form (`(protected)/recipes/[id]/edit/`) — pre-populate with existing value
+- [ ] Display rank badge on public recipe listing (`src/routes/recipes/+page.svelte`)
+- [ ] Display rank badge on recipe detail page (`src/routes/recipes/[id]/+page.svelte`)
+- [ ] Rank selector is only rendered for the recipe author (edit form is already author-gated; display is read-only everywhere)
