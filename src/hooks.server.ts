@@ -7,6 +7,9 @@ import { logger } from '$lib/server/logger';
 import { checkRateLimit } from '$lib/server/rate-limit';
 import { httpRequestsTotal, httpRequestDurationSeconds } from '$lib/server/metrics';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { db } from '$lib/server/db';
+import { userRoles } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
 // Rate limiting
@@ -96,6 +99,25 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 };
 
 // ---------------------------------------------------------------------------
+// Role resolution
+// ---------------------------------------------------------------------------
+// Runs after session resolution. Queries user_roles for the authenticated user
+// and sets event.locals.isAdmin so downstream code can skip a DB round-trip.
+
+const handleRoles: Handle = async ({ event, resolve }) => {
+	if (event.locals.user) {
+		const rows = await db
+			.select({ role: userRoles.role })
+			.from(userRoles)
+			.where(eq(userRoles.userId, event.locals.user.id));
+		event.locals.isAdmin = rows.some((r) => r.role === 'admin');
+	} else {
+		event.locals.isAdmin = false;
+	}
+	return resolve(event);
+};
+
+// ---------------------------------------------------------------------------
 // HTTP security headers
 // ---------------------------------------------------------------------------
 
@@ -152,4 +174,4 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 // Export composed handle
 // ---------------------------------------------------------------------------
 
-export const handle: Handle = sequence(handleRateLimit, handleBetterAuth, handleSecurityHeaders);
+export const handle: Handle = sequence(handleRateLimit, handleBetterAuth, handleRoles, handleSecurityHeaders);

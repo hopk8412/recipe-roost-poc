@@ -14,7 +14,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async (event) => {
 	const recipe = await getRecipeById(event.params.id);
 	if (!recipe) error(404, 'Recipe not found');
-	if (recipe.authorId !== event.locals.user!.id) error(403, 'Forbidden');
+	if (recipe.authorId !== event.locals.user!.id && !event.locals.isAdmin) error(403, 'Forbidden');
 
 	return {
 		recipe,
@@ -88,7 +88,8 @@ export const actions: Actions = {
 				steps: parsedSteps,
 				tagNames: parseTagNames(form.data.tags)
 			},
-			newImageUrl
+			newImageUrl,
+			event.locals.isAdmin
 		);
 
 		if (!result) error(403, 'Forbidden');

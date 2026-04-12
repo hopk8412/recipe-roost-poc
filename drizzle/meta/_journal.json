@@ -15,6 +15,13 @@
       "when": 1744416000000,
       "tag": "0001_drop_recipe_timing_difficulty",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776027068628,
+      "tag": "0002_dazzling_korg",
+      "breakpoints": true
     }
   ]
 }

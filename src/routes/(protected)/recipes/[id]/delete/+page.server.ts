@@ -5,7 +5,7 @@ import type { Actions } from './$types';
 
 export const actions: Actions = {
 	default: async (event) => {
-		const deleted = await deleteRecipe(event.params.id, event.locals.user!.id);
+		const deleted = await deleteRecipe(event.params.id, event.locals.user!.id, event.locals.isAdmin);
 
 		if (!deleted) {
 			error(403, 'Forbidden');
