@@ -5,6 +5,7 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const isAuthor = $derived(data.currentUserId === data.recipe.authorId);
+	const canManage = $derived(isAuthor || data.isAdmin);
 	const isSaved = $derived(form != null ? (form as { saved: boolean }).saved : data.isSaved);
 </script>
 
@@ -47,8 +48,8 @@
 					</form>
 				{/if}
 
-				<!-- Author controls -->
-				{#if isAuthor}
+				<!-- Author / admin controls -->
+				{#if canManage}
 					<a
 						href="/recipes/{data.recipe.id}/edit"
 						class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"

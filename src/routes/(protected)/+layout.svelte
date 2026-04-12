@@ -20,6 +20,11 @@
 					<a href="/recipes" class="hover:text-orange-600">Browse</a>
 					<a href="/dashboard" class="hover:text-orange-600">My Recipes</a>
 					<a href="/recipes/new" class="hover:text-orange-600">+ New Recipe</a>
+					{#if data.isAdmin}
+						<a href="/admin/users" class="font-semibold text-orange-600 hover:text-orange-700">
+							Admin
+						</a>
+					{/if}
 				</nav>
 
 				<div class="flex items-center gap-3">
