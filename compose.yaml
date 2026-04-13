@@ -6,7 +6,7 @@ services:
     ports:
       - '3000:3000'
     environment:
-      DATABASE_URL: postgres://recipe_user:secret@pgbouncer:5433/recipe_roost
+      DATABASE_URL: postgres://recipe_user:${POSTGRES_PASSWORD}@pgbouncer:5433/recipe_roost
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: '9000'
@@ -37,7 +37,7 @@ services:
       - '5434:5432'
     environment:
       POSTGRES_USER: recipe_user
-      POSTGRES_PASSWORD: secret
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: recipe_roost
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -56,7 +56,7 @@ services:
       DB_HOST: db
       DB_PORT: '5432'
       DB_USER: recipe_user
-      DB_PASSWORD: secret
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: recipe_roost
       LISTEN_PORT: '5433'
       POOL_MODE: transaction
@@ -87,8 +87,8 @@ services:
       - '9000:9000'
       - '9001:9001'
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: recipe_roosting_admin
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
