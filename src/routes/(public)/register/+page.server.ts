@@ -4,6 +4,7 @@ import { zod4 } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 import { auth } from '$lib/server/auth';
 import { APIError } from 'better-auth/api';
+import { logger } from '$lib/server/logger';
 import type { Actions, PageServerLoad } from './$types';
 
 const registerSchema = z
@@ -41,6 +42,7 @@ export const actions: Actions = {
 					status: 400
 				});
 			}
+			logger.error({ err: error }, 'Unexpected error during registration');
 			return message(form, 'An unexpected error occurred. Please try again.', { status: 500 });
 		}
 
