@@ -10,10 +10,11 @@ services:
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: '9000'
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET: recipe-roost
-      ORIGIN: http://localhost:3000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-recipe-roost}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
+      ORIGIN: ${ORIGIN}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       NODE_ENV: production
     depends_on:
