@@ -158,7 +158,7 @@ const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 	// img-src includes the MinIO public URL so recipe images load correctly.
 	const csp = [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline'", // unsafe-inline needed for Svelte inline scripts
+		"script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-inline for Svelte, unsafe-eval for adapter-node runtime
 		"style-src 'self' 'unsafe-inline'", // unsafe-inline needed for Tailwind/Svelte styles
 		"img-src 'self' data: blob: http://localhost:9000 https:",
 		"font-src 'self'",
