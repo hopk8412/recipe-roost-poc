@@ -63,9 +63,18 @@ export async function listPublishedRecipes(page = 1, limit = 12, filters: Recipe
 	const offset = (page - 1) * limit;
 
 	const q = filters.q?.trim();
+	const tsQuery = q
+		? q
+				.split(/\s+/)
+				.map((w) => w.replace(/[^a-zA-Z0-9]/g, ''))
+				.filter((w) => w.length > 0)
+				.map((w) => `${w}:*`)
+				.join(' & ')
+		: null;
+
 	const whereClause = and(
 		eq(recipes.isPublished, true),
-		q ? sql`${recipes.searchVector} @@ plainto_tsquery('english', ${q})` : undefined,
+		tsQuery ? sql`${recipes.searchVector} @@ to_tsquery('english', ${tsQuery})` : undefined,
 		filters.tag
 			? sql`EXISTS (
 					SELECT 1 FROM recipe_tags rt
@@ -75,8 +84,8 @@ export async function listPublishedRecipes(page = 1, limit = 12, filters: Recipe
 			: undefined
 	);
 
-	const orderBy = q
-		? desc(sql`ts_rank(${recipes.searchVector}, plainto_tsquery('english', ${q}))`)
+	const orderBy = tsQuery
+		? desc(sql`ts_rank(${recipes.searchVector}, to_tsquery('english', ${tsQuery}))`)
 		: desc(recipes.createdAt);
 
 	const [rows, countRows] = await Promise.all([

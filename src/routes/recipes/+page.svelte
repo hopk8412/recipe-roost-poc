@@ -43,11 +43,13 @@
 	function handleSearchInput() {
 		clearTimeout(searchTimer);
 		searchTimer = setTimeout(() => {
-			goto(buildParams({ q: searchValue || null }), {
-				keepFocus: true,
-				noScroll: true,
-				replaceState: true
-			});
+			if (searchValue.length >= 2 || searchValue.length === 0) {
+				goto(buildParams({ q: searchValue || null }), {
+					keepFocus: true,
+					noScroll: true,
+					replaceState: true
+				});
+			}
 		}, 400);
 	}
 

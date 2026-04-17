@@ -3,7 +3,8 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url, setHeaders }) => {
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
-	const q = url.searchParams.get('q')?.trim() || undefined;
+	const raw = url.searchParams.get('q')?.trim() ?? '';
+	const q = raw.length >= 2 ? raw : undefined;
 	const tag = url.searchParams.get('tag') || undefined;
 
 	const [listing, allTags] = await Promise.all([

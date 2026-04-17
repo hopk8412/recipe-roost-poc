@@ -18,6 +18,7 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 | 6 — Deployment Readiness | Slim recipe model (dropped timing/difficulty fields), liveness + readiness probes, Prometheus metrics, Grafana Docker profile, pg_dump backup script, README |
 | 7 — Role System | `user_roles` table, `isAdmin` on `App.Locals`, `handleRoles` hook, admin bypass for edit/delete, admin seed user |
 | 8 — User Management Screen | `(admin)` layout group, `/admin/users` paginated table, `grantAdmin`/`revokeAdmin` actions, Admin nav link for admins |
+| 9 — Search Prefix Matching | Switch `plainto_tsquery` → `to_tsquery` with `:*` prefix operator; ≥ 2-char minimum on frontend + server |
 
 ---
 
@@ -73,7 +74,25 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 
 ---
 
-### Phase 9: Recipe Ranking
+### Phase 9: Search — Prefix Matching ✅ Complete
+
+**Goal:** Fix partial-word search so that typing "choc", "toma", or any prefix of a word in a recipe title/description returns matching results, with search firing at ≥ 2 characters typed.
+
+**Root cause:** `plainto_tsquery('english', q)` requires full lexeme matches after English stemming. Prefixes like "choco" don't match the stored lexeme `chocol` (the stem of "chocolate").
+
+#### Backend
+- [x] `src/lib/server/db/queries/recipes.ts` — replace `plainto_tsquery` with a prefix-aware builder that constructs `to_tsquery('english', 'word1:* & word2:* ...')` from the trimmed, whitespace-split input words (non-alphanumeric chars stripped from each word)
+- [x] Apply the same change to the `ts_rank` expression in the ORDER BY clause
+
+#### Server
+- [x] `src/routes/recipes/+page.server.ts` — enforce minimum query length: only pass `q` to `listPublishedRecipes` when `q.length >= 2`; shorter values treated as no query
+
+#### Frontend
+- [x] `src/routes/recipes/+page.svelte` — in `handleSearchInput`, only call `goto` with a `q` param when `searchValue.length >= 2`; clearing to 0 chars resets the listing; 1 char does nothing
+
+---
+
+### Phase 10: Recipe Ranking
 
 **Goal:** Allow recipe authors to assign an optional letter rank to their recipes, displayed everywhere the recipe appears.
 
