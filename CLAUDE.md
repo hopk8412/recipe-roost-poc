@@ -17,6 +17,19 @@ Branch names must follow the `feature-<tag>` convention. All work for that featu
 
 ---
 
+## Critical Constraints — Read First
+
+Violations here cause silent failures or data loss:
+
+- **Never remove `prepare: false`** from the Drizzle client — required for PgBouncer transaction pooling; removing it causes prepared-statement errors under load.
+- **Never use `dataType: 'json'`** on the recipe create/edit forms — it is incompatible with file inputs; the current multipart pattern is intentional.
+- **Always use Zod v4 syntax** — `{ error: '...' }` not `{ message: '...' }`, `.check(z.email())` not `.email()`. See [Forms](#forms-superforms--zod-v4) below.
+- **Never add auth to `/api/metrics`** — it is intentionally unauthenticated for Prometheus scraping.
+- **`npm run db:push` is dev-only** — never use it in production; always use `db:migrate` with a proper migration file.
+- **Import `user` from `$lib/server/db/schema`**, not directly from `auth.schema.ts` — the app schema re-exports it and that is the stable import path.
+
+---
+
 ## Commands
 
 ```bash
@@ -28,6 +41,7 @@ npm run check         # Type-check (svelte-kit sync + svelte-check) — run befo
 npm run lint          # prettier --check + eslint
 npm run format        # prettier --write
 
+npm run db:push       # Push schema changes directly to DB (dev only — skips migration files)
 npm run db:migrate    # Apply Drizzle migrations (uses DATABASE_URL_DIRECT, bypasses PgBouncer)
 npm run db:generate   # Generate a new migration from schema changes
 npm run db:studio     # Drizzle Studio GUI
@@ -53,14 +67,16 @@ docker compose --profile monitoring up       # + Prometheus (:9090) + Grafana (:
 
 ## Environment
 
-Copy `.env.example` to `.env`. Key non-obvious values:
+Copy `.env.example` to `.env` — it is the canonical list of all required variables. Non-obvious values:
 
-- `DATABASE_URL` → PgBouncer on port **5433** (transaction pooling)
+- `DATABASE_URL` → PgBouncer on port **5433** (transaction pooling; app always connects here)
 - `DATABASE_URL_DIRECT` → PostgreSQL directly on port **5434** (migrations only — DDL is incompatible with PgBouncer transaction pooling)
 - `MINIO_ENDPOINT` → internal hostname (`minio` inside Docker, `localhost` outside)
 - `MINIO_PUBLIC_URL` → browser-accessible base URL — differs from `MINIO_ENDPOINT` when the app runs inside Docker
+- `ORIGIN` → must match the request origin; wrong value breaks CSRF protection
+- `BETTER_AUTH_SECRET` → must be 32+ characters; app will fail to start without it
 
-PostgreSQL is mapped to host port **5434** (not 5432) because a local PostgreSQL install already uses 5432.
+PostgreSQL host port is **5434** (not 5432) — a local PostgreSQL install already occupies 5432.
 
 ---
 
@@ -72,7 +88,7 @@ PostgreSQL is mapped to host port **5434** (not 5432) because a local PostgreSQL
 
 ```
 Request
-  → hooks.server.ts (rate-limit → Redis session cache → auth.api.getSession → security headers)
+  → hooks.server.ts (rate-limit → Redis session cache → auth.api.getSession → role resolution → security headers)
   → Route +layout.server.ts (redirect guard)
   → Page +page.server.ts (load / actions)
   → Svelte component
@@ -84,19 +100,35 @@ Request
 |---|---|---|
 | `(public)/` | `/login`, `/register` | Redirects **authenticated** users → `/dashboard` |
 | `(protected)/` | `/dashboard`, `/recipes/new`, `/recipes/[id]/edit`, `/recipes/[id]/delete` | Redirects **unauthenticated** users → `/login` |
+| `(admin)/` | `/admin/users` | Redirects unauthenticated → `/login`, non-admins → `/dashboard`; reads `event.locals.isAdmin` (set by hooks — see [Auth pattern](#auth-pattern)) |
 | `routes/recipes/` | `/recipes`, `/recipes/[id]` | No redirect — `user` is passed but optional |
 
 `routes/recipes/` lives **outside** both layout groups and has its own layout. `/recipes/new` (protected) takes static-segment priority over `recipes/[id]` (public) — standard SvelteKit behaviour.
 
 ### Auth pattern
 
-Session is resolved globally in `hooks.server.ts` and placed on `event.locals.user` / `event.locals.session`. Protected pages access `event.locals.user!` (non-null — guaranteed by the layout redirect). `data.user` flows to child pages via SvelteKit layout data merging.
+- `event.locals.user` / `event.locals.session` — set by `hooks.server.ts` for every request (authenticated or not).
+- `event.locals.isAdmin: boolean` — set by the `handleRoles` hook immediately after session resolution; do not query `user_roles` again in page code.
+- In protected pages, `event.locals.user!` is safe to non-null assert — the layout redirect guarantees it.
+- `data.user` flows from `(protected)/+layout.server.ts` to all child pages via SvelteKit layout data merging.
+
+Checking admin status in a page or layout:
+```typescript
+// (admin)/+layout.server.ts — already done for you
+if (!event.locals.isAdmin) redirect(302, '/dashboard');
+
+// In any other server file
+if (event.locals.isAdmin) { /* show extra controls */ }
+```
 
 ### Database
 
-Drizzle query-builder only — no `relations.ts` / relational API. All queries live in `src/lib/server/db/queries/recipes.ts`. The `user` table is managed by better-auth; import it as `import { user } from '$lib/server/db/schema'` (re-exported via `export * from './auth.schema'`).
-
-`prepare: false` is set on the Drizzle client — required for PgBouncer transaction pooling mode. Never remove it.
+- Drizzle query-builder only — no `relations.ts` / relational API.
+- Queries live in `src/lib/server/db/queries/recipes.ts` (recipe CRUD) and `src/lib/server/db/queries/users.ts` (user + role management).
+- **Import `user` as `import { user } from '$lib/server/db/schema'`** — it is re-exported there via `export * from './auth.schema'`. Do not import from `auth.schema.ts` directly.
+- Schema has **11 tables**: 4 better-auth (`user`, `session`, `account`, `verification`), 6 app (`recipes`, `ingredients`, `steps`, `tags`, `recipe_tags`, `saved_recipes`), plus `user_roles`.
+- `recipes.rank` — nullable `varchar(1)`, values `S/A/B/C/D`, enforced by a DB `CHECK` constraint; set by admins only.
+- `prepare: false` on the Drizzle client — required for PgBouncer transaction pooling. Never remove it.
 
 ### Forms (superforms + Zod v4)
 
@@ -119,22 +151,22 @@ This suppresses a false-positive Svelte 5 reactivity warning.
 
 ### Recipe forms (file upload + JSON arrays)
 
-`dataType: 'json'` cannot be mixed with file inputs. The recipe create/edit forms use:
+**Do not switch to `dataType: 'json'`** — it is incompatible with file inputs. The current multipart pattern is intentional:
 
-1. Ingredients and steps as Svelte `$state` arrays, serialised into hidden `<input type="hidden">` fields as JSON (`ingredientsJson`, `stepsJson`)
-2. Image as a plain `<input type="file" name="image">` extracted from `formData` **before** passing to `superValidate`
-3. Numeric fields kept as `z.string()` in the Zod schema, parsed manually server-side
-4. `enctype="multipart/form-data"` on the form element
+1. `enctype="multipart/form-data"` on the form element.
+2. Extract the image file from `formData` **before** calling `superValidate` — do not let superforms touch it.
+3. Ingredients/steps serialised as JSON into hidden `<input type="hidden">` fields (`ingredientsJson`, `stepsJson`); parsed manually server-side.
+4. Numeric fields kept as `z.string()` in the Zod schema; cast to numbers server-side.
 
 Shared schema and helpers live in `src/lib/recipe-form.ts` (no server-only imports — safe in `.svelte` files).
 
 ### Observability endpoints
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/health` | Liveness probe — process-level only, no deps |
-| `GET /api/ready` | Readiness probe — checks PostgreSQL + Redis; returns 503 when degraded |
-| `GET /api/metrics` | Prometheus metrics (prom-client) |
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `GET /api/health` | None | Liveness probe — process-level only, no deps |
+| `GET /api/ready` | None | Readiness probe — checks PostgreSQL + Redis; returns 503 when degraded |
+| `GET /api/metrics` | None | Prometheus metrics (prom-client) — **must stay unauthenticated** for scraping |
 
 ### Logging
 
