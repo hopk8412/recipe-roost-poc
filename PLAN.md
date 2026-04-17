@@ -19,6 +19,7 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 | 7 — Role System | `user_roles` table, `isAdmin` on `App.Locals`, `handleRoles` hook, admin bypass for edit/delete, admin seed user |
 | 8 — User Management Screen | `(admin)` layout group, `/admin/users` paginated table, `grantAdmin`/`revokeAdmin` actions, Admin nav link for admins |
 | 9 — Search Prefix Matching | Switch `plainto_tsquery` → `to_tsquery` with `:*` prefix operator; ≥ 2-char minimum on frontend + server |
+| 10 — Recipe Ranking | Optional S/A/B/C/D rank on recipes; button-group selector on create/edit forms; badge on listing cards and detail page |
 
 ---
 
@@ -92,26 +93,27 @@ Tech stack, schema, architecture patterns, and Docker Compose services are docum
 
 ---
 
-### Phase 10: Recipe Ranking
+### Phase 10: Recipe Ranking ✅ Complete
 
 **Goal:** Allow recipe authors to assign an optional letter rank to their recipes, displayed everywhere the recipe appears.
 
 **Rank values:** `S`, `A`, `B`, `C`, `D` (nullable — rank is optional)
 
-#### Schema changes
-- Add `rank varchar(1)` column to the `recipes` table with a `CHECK (rank IN ('S', 'A', 'B', 'C', 'D'))` constraint (nullable).
-- Generate and apply a Drizzle migration.
+#### Schema
+- [x] Add `rank varchar(1)` column to the `recipes` table with a `CHECK (rank IN ('S', 'A', 'B', 'C', 'D'))` constraint (nullable)
+- [x] Generated and applied migration `drizzle/0003_brown_raider.sql`
 
 #### Backend
-- [ ] Update `src/lib/server/db/schema.ts` — add `rank` to the `recipes` table definition
-- [ ] Run `npm run db:generate` then `npm run db:migrate`
-- [ ] Update `src/lib/recipe-form.ts` — add optional `rank` field (`z.enum(['S','A','B','C','D']).nullable().optional()`)
-- [ ] Update query functions in `src/lib/server/db/queries/recipes.ts` to select and write `rank`
-- [ ] Update create and edit server actions to pass `rank` through to the DB
+- [x] `src/lib/server/db/schema.ts` — `rank` varchar(1) column + check constraint
+- [x] `src/lib/recipe-form.ts` — `RANKS` constant, `Rank` type, `RANK_BADGE_CLASSES` map (used in Svelte components)
+- [x] `src/lib/server/db/queries/recipes.ts` — `rank` added to `RecipeSummary`, `RecipeInput`, `listPublishedRecipes` select, `getRecipeById` select, `createRecipe` insert, `updateRecipe` set
+- [x] Create and edit server actions extract `rank` from `formData` (same pattern as image), validate against `RANKS`, pass to query
 
 #### UI
-- [ ] Add rank selector to create form (`(protected)/recipes/new/`) — dropdown or button group for S/A/B/C/D + a "No rank" / clear option
-- [ ] Add rank selector to edit form (`(protected)/recipes/[id]/edit/`) — pre-populate with existing value
-- [ ] Display rank badge on public recipe listing (`src/routes/recipes/+page.svelte`)
-- [ ] Display rank badge on recipe detail page (`src/routes/recipes/[id]/+page.svelte`)
-- [ ] Rank selector is only rendered for the recipe author (edit form is already author-gated; display is read-only everywhere)
+- [x] Button-group rank selector (S/A/B/C/D + Clear) in Tags & Visibility section of both create and edit forms; edit pre-populates from existing recipe
+- [x] Rank badge on listing cards (next to title)
+- [x] Rank badge on recipe detail page (next to title)
+
+#### Notes
+- Rank extracted outside superforms (same pattern as file upload) to avoid empty-string/null Zod coercion complexity
+- `RANK_BADGE_CLASSES` lives in `src/lib/recipe-form.ts` (no server imports) so it is safe to import in `.svelte` files

@@ -31,3 +31,14 @@ export function parseTagNames(s: string): string[] {
 		.map((t) => t.trim().toLowerCase())
 		.filter(Boolean);
 }
+
+export const RANKS = ['S', 'A', 'B', 'C', 'D'] as const;
+export type Rank = (typeof RANKS)[number];
+
+export const RANK_BADGE_CLASSES: Record<Rank, string> = {
+	S: 'bg-amber-400 text-amber-950',
+	A: 'bg-green-500 text-white',
+	B: 'bg-blue-500 text-white',
+	C: 'bg-violet-500 text-white',
+	D: 'bg-gray-400 text-white'
+};

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
+	import { RANK_BADGE_CLASSES, type Rank } from '$lib/recipe-form';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -17,7 +18,14 @@
 	<!-- Header -->
 	<div class="space-y-4">
 		<div class="flex items-start justify-between gap-4">
-			<h1 class="text-3xl font-bold text-gray-900">{data.recipe.title}</h1>
+			<div class="flex items-center gap-3">
+				<h1 class="text-3xl font-bold text-gray-900">{data.recipe.title}</h1>
+				{#if data.recipe.rank}
+					<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold {RANK_BADGE_CLASSES[data.recipe.rank as Rank]}">
+						{data.recipe.rank}
+					</span>
+				{/if}
+			</div>
 
 			<div class="flex shrink-0 gap-2">
 				<!-- Save / Unsave button (logged-in non-authors only) -->

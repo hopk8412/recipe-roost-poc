@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
+	import { RANK_BADGE_CLASSES, type Rank } from '$lib/recipe-form';
 
 	let { data }: { data: PageData } = $props();
 
@@ -160,9 +161,16 @@
 
 					<!-- Body -->
 					<div class="flex flex-1 flex-col gap-2 p-4">
-						<h2 class="line-clamp-2 text-base font-semibold text-gray-900 group-hover:text-orange-600">
-							{recipe.title}
-						</h2>
+						<div class="flex items-start gap-2">
+							<h2 class="line-clamp-2 flex-1 text-base font-semibold text-gray-900 group-hover:text-orange-600">
+								{recipe.title}
+							</h2>
+							{#if recipe.rank}
+								<span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold {RANK_BADGE_CLASSES[recipe.rank as Rank]}">
+									{recipe.rank}
+								</span>
+							{/if}
+						</div>
 
 						{#if recipe.description}
 							<p class="line-clamp-2 text-sm text-gray-500">{recipe.description}</p>

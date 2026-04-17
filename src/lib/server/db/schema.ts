@@ -2,13 +2,16 @@ import {
 	pgTable,
 	uuid,
 	text,
+	varchar,
 	boolean,
 	integer,
 	timestamp,
 	primaryKey,
 	index,
+	check,
 	customType
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { user } from './auth.schema';
 
 // Custom tsvector type for full-text search
@@ -33,6 +36,7 @@ export const recipes = pgTable(
 		description: text('description'),
 		imageUrl: text('image_url'),
 		isPublished: boolean('is_published').notNull().default(false),
+		rank: varchar('rank', { length: 1 }),
 		// Populated via database trigger (see migration)
 		searchVector: tsvector('search_vector'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -40,8 +44,9 @@ export const recipes = pgTable(
 	},
 	(table) => [
 		index('recipes_author_id_idx').on(table.authorId),
-		index('recipes_created_at_idx').on(table.createdAt)
+		index('recipes_created_at_idx').on(table.createdAt),
 		// GIN index on search_vector is added via raw SQL in the migration
+		check('rank_check', sql`${table.rank} IN ('S', 'A', 'B', 'C', 'D')`)
 	]
 );
 

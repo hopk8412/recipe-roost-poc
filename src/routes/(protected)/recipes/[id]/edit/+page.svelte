@@ -3,7 +3,7 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client } from 'sveltekit-superforms/adapters';
 	import type { PageData } from './$types';
-	import { recipeFormSchema } from '$lib/recipe-form';
+	import { recipeFormSchema, RANKS, RANK_BADGE_CLASSES } from '$lib/recipe-form';
 
 	let { data }: { data: PageData } = $props();
 
@@ -50,6 +50,9 @@
 	function removeStep(i: number) {
 		if (stepsList.length > 1) stepsList = stepsList.filter((_, idx) => idx !== i);
 	}
+
+	// ─── Rank state (pre-populated from existing recipe) ──────────────────────
+	let selectedRank = $state<string>(untrack(() => data.recipe.rank ?? ''));
 </script>
 
 <svelte:head>
@@ -72,9 +75,10 @@
 	{/if}
 
 	<form method="post" enctype="multipart/form-data" use:enhance class="space-y-8">
-		<!-- Hidden serialised lists -->
+		<!-- Hidden serialised lists + rank -->
 		<input type="hidden" name="ingredientsJson" value={JSON.stringify(ingredientsList)} />
 		<input type="hidden" name="stepsJson" value={JSON.stringify(stepsList)} />
+		<input type="hidden" name="rank" value={selectedRank} />
 
 		<!-- ── Basic info ──────────────────────────────────────────────────── -->
 		<section class="space-y-5 rounded-2xl border border-gray-200 bg-white p-6">
@@ -222,6 +226,32 @@
 					placeholder="breakfast, vegetarian, quick"
 				/>
 				<p class="mt-1 text-xs text-gray-400">Comma-separated</p>
+			</div>
+
+			<div>
+				<p class="mb-2 block text-sm font-medium text-gray-700">Rank <span class="text-gray-400">(optional)</span></p>
+				<div class="flex flex-wrap gap-2">
+					{#each RANKS as r}
+						<button
+							type="button"
+							onclick={() => (selectedRank = selectedRank === r ? '' : r)}
+							class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition {selectedRank === r
+								? RANK_BADGE_CLASSES[r]
+								: 'bg-gray-100 text-gray-500 hover:bg-gray-200'}"
+						>
+							{r}
+						</button>
+					{/each}
+					{#if selectedRank}
+						<button
+							type="button"
+							onclick={() => (selectedRank = '')}
+							class="rounded-full px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-600"
+						>
+							Clear
+						</button>
+					{/if}
+				</div>
 			</div>
 
 			<label class="flex cursor-pointer items-center gap-3">

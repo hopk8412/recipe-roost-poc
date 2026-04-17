@@ -7,7 +7,9 @@ import {
 	recipeFormSchema,
 	ingredientRowSchema,
 	stepRowSchema,
-	parseTagNames
+	parseTagNames,
+	RANKS,
+	type Rank
 } from '$lib/recipe-form';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -54,11 +56,16 @@ export const actions: Actions = {
 			}
 		}
 
+		// Extract rank (optional, validated against allowed values)
+		const rankRaw = formData.get('rank') as string | null;
+		const rank: Rank | null = RANKS.includes(rankRaw as Rank) ? (rankRaw as Rank) : null;
+
 		const recipe = await createRecipe(event.locals.user!.id, {
 			title: form.data.title,
 			description: form.data.description || null,
 			imageUrl,
 			isPublished: form.data.isPublished,
+			rank,
 			ingredients: parsedIngredients,
 			steps: parsedSteps,
 			tagNames: parseTagNames(form.data.tags)

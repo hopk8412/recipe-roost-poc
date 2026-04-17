@@ -20,6 +20,7 @@ export type RecipeSummary = {
 	description: string | null;
 	imageUrl: string | null;
 	isPublished: boolean;
+	rank: string | null;
 	createdAt: Date;
 };
 
@@ -38,6 +39,7 @@ export type RecipeInput = {
 	description?: string | null;
 	imageUrl?: string | null;
 	isPublished?: boolean;
+	rank?: string | null;
 	ingredients: IngredientInput[];
 	steps: StepInput[];
 	tagNames: string[];
@@ -98,6 +100,7 @@ export async function listPublishedRecipes(page = 1, limit = 12, filters: Recipe
 				description: recipes.description,
 				imageUrl: recipes.imageUrl,
 				isPublished: recipes.isPublished,
+				rank: recipes.rank,
 				createdAt: recipes.createdAt
 			})
 			.from(recipes)
@@ -144,6 +147,7 @@ export async function getRecipeById(id: string): Promise<RecipeFull | null> {
 			description: recipes.description,
 			imageUrl: recipes.imageUrl,
 			isPublished: recipes.isPublished,
+			rank: recipes.rank,
 			createdAt: recipes.createdAt,
 			updatedAt: recipes.updatedAt
 		})
@@ -219,7 +223,8 @@ export async function createRecipe(authorId: string, input: RecipeInput) {
 			title: input.title,
 			description: input.description ?? null,
 			imageUrl: input.imageUrl ?? null,
-			isPublished: input.isPublished ?? false
+			isPublished: input.isPublished ?? false,
+			rank: input.rank ?? null
 		})
 		.returning();
 
@@ -284,6 +289,7 @@ export async function updateRecipe(
 			description: input.description ?? null,
 			imageUrl: imageUrlToSet,
 			isPublished: input.isPublished ?? false,
+			rank: input.rank ?? null,
 			updatedAt: new Date()
 		})
 		.where(eq(recipes.id, id))
